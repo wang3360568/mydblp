@@ -2,14 +2,46 @@
 import os
 import json
 import sys
+import copy
+import collections
 
 class Person:
     def __init__(self,id,name):
         self.id=id
         self.name=name
         self.papers=dict()
+        self.yearDict=collections.OrderedDict()
     def update_paper(self,paper_id,rank):
         self.papers[paper_id]=rank
+    
+    def update_byyear(self,startYear,endYear,paperDict):
+        for i in range(startYear,endYear):
+            self.yearDict[i]=[]
+        for key in self.papers:
+            if paperDict[key].year<=startYear:
+                self.yearDict[startYear].append(key)
+            else:
+                self.yearDict[paperDict[key].year].append(key)
+
+class Person_node:
+    def __init__(self,authorId,learningYear):
+        self.authorId=authorId
+        self.learningYear=learningYear
+        self.hisval=0.0
+        self.val=0.0
+
+    def updateHisVal(self,val):
+        self.hisval=val
+
+    def updateVal(self,val):
+        self.val=val
+
+    def __eq__( self, other ):
+        return self.authorId == other.authorId and self.learningYear == other.learningYear
+
+    def __hash__(self):
+         return hash(self.authorId) ^ hash(self.learningYear)
+
 
 class Author:
     def __init__(self,authorid,paperid):
@@ -17,7 +49,7 @@ class Author:
         self.paperid=int(paperid)
 
 class Paper:
-    def __init__(self, id, title, venue, year,abstract=None):
+    def __init__(self, id, title, venue, year,authors=None, abstract=None):
 
         try:
             self.id = id
@@ -25,10 +57,15 @@ class Paper:
             self.venue = venue
             self.year = int(year) if year else None
             self.abstract = abstract if abstract else None
+            if authors:
+                self.authors=copy.copy(authors)
+            else:
+                self.authors=[]
             self.author_ids = {}
             self.referring_ids = []
             self.referred_ids = []
         except:
+            print 'error'
             print id
             print title
             print venue

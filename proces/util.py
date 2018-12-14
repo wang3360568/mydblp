@@ -65,6 +65,21 @@ def write_csv(fname, header, rows):
         if header: writer.writerow(header)
         writer.writerows(rows)
 
+def read_csv_withdict(file,keycol,contentcol):
+    content_dict=dict()
+    with open(file) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            content_dict[row[keycol]]=row[contentcol]
+    return content_dict
+
+def write_csv_inlist(file,contentlist,header=None):
+    with open(file, 'wb') as f:
+        writer = csv.writer(f)
+        if header: writer.writerow(header)
+        for row in contentlist:
+            writer.writerow(row)
+
 def simplifyStr(string):
     string=string.replace(' ','')
     string=string.replace('"','')
@@ -110,6 +125,12 @@ def smart_open(file_like, mode='r'):
             return file_like.open(mode)
         except (TypeError, AttributeError):
             return file_like
+
+def dict2list(inputDict):
+    outputList=[]
+    for key in inputDict:
+        outputList.append([key, inputDict[key]])
+    return outputList
 
 
 def swap_file_delim(infile, indelim, outfile, outdelim):

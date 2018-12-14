@@ -16,11 +16,14 @@ from myclass.myobj import Paper,Person
 
 import pymysql.cursors
 
-paperDict=dict()
-paperDict_cleaned=dict()
-personDict=dict()
-DBISDict_cleaned=dict()
+
 class ParseOriginalData:
+
+    def __init__(self):
+        self.paperDict=dict()
+        self.paperDict_cleaned=dict()
+        self.personDict=dict()
+        self.DBISDict_cleaned=dict()
 
     def run(self,paperfile,autherfile,coauthorfile,reffile):
         self.readPaper(paperfile)
@@ -34,7 +37,7 @@ class ParseOriginalData:
             reader = csv.reader(f)
             next(reader)
             for row in reader:
-                paperDict[row[0]]=Paper(
+                self.paperDict[row[0]]=Paper(
                 id=row[0],
                 title=row[1],
                 venue=row[2],
@@ -50,7 +53,7 @@ class ParseOriginalData:
                 if title=="": continue
                 
                 title=util.simplifyStr(title)
-                paperDict[id].title=title
+                self.paperDict[id].title=title
 
 
     def readAuthor(self, file):
@@ -58,7 +61,7 @@ class ParseOriginalData:
             reader = csv.reader(f)
             next(reader)
             for row in reader:
-                personDict[row[0]]=Person(
+                self.personDict[row[0]]=Person(
                 id=row[0],
                 name=row[1]
                 )
@@ -74,12 +77,8 @@ class ParseOriginalData:
             paper_id=content[0][1:]
             rank=int(content[2])
 
-            # print author_id
-            # print paper_id
-            # print rank
-
-            paper=paperDict[paper_id]
-            person=personDict[author_id]
+            paper=self.paperDict[paper_id]
+            person=self.personDict[author_id]
             if paper:
                 paper.update_authorId(author_id,rank)
             else:
@@ -98,11 +97,41 @@ class ParseOriginalData:
                 refferred_id=row[0]
                 refferring_id=row[1]
 
-                paper_ed=paperDict[refferred_id]
-                paper_ing=paperDict[refferring_id]
+                paper_ed=self.paperDict[refferred_id]
+                paper_ing=self.paperDict[refferring_id]
 
                 paper_ed.update_referredIds(refferring_id)
                 paper_ing.update_referringIds(refferred_id)
+
+    def reverseDict(self):
+        paperTitleDict=dict()
+        for key in self.paperDict:
+            paperTitleDict[self.paperDict[key].title]=key
+
+        return paperTitleDict
+
+
+    def matchAminerAndDBLP(self, focusedPaperDict, filterDict=None):
+        haveCounter=0
+        havelist=[]
+        nolist=[]
+        html_parser = HTMLParser.HTMLParser()
+        paperTitleDict=self.reverseDict()
+        for key in focusedPaperDict:
+            originalTitle = html_parser.unescape(focusedPaperDict[key].title)
+            originalTitle=util.simplifyStr(originalTitle)
+            # print originalTitle
+            if originalTitle in paperTitleDict:
+                havelist.append([paperTitleDict[originalTitle],key,focusedPaperDict[key].title])
+                haveCounter+=1
+                print haveCounter
+            else:
+                nolist.append([key,focusedPaperDict[key].title])
+        
+        util.write_csv_inlist('havelist.csv',havelist,['aminerKey','dblpKey','title'])
+        util.write_csv_inlist('nolist.csv',nolist,['aminerKey','title'])
+        print haveCounter
+        print len(focusedPaperDict)
 
 class ParseCleanedData:
 
@@ -217,6 +246,7 @@ class ParseCleanedData:
         print counter
         print len(currentDict)
 
+
     def outputProtentialPapers(self,originalDict,notmatchedfile,paperconffile,paperfile,DBISDictfile,filterDict=None):
         notmatchedIds=set()
         with open(notmatchedfile) as f:
@@ -238,8 +268,6 @@ class ParseCleanedData:
             writer = csv.writer(f)
             for row in focused_paper:
                 writer.writerow(row)
-
-
 
     def processDBIS(self,file_cleaned,file_DBIS):
         confdict=self.readConf(file_cleaned)
@@ -293,7 +321,19 @@ class ParseCleanedData:
                 DBIS_paperDict[paperdict[key]]=key
         print counter
         return DBIS_paperDict
-    
+
+    def findDBIS_paper_withfilter(self,paper_confdict,paperdict,DBIS_cleaned,myfilter=None):
+        DBIS_paperlist=list()
+        counter=0
+        for key in paperdict:
+            confkey=paper_confdict[key]
+            if confkey in DBIS_cleaned:
+                counter+=1
+                if key not in myfilter:
+                    DBIS_paperlist.append([key, paperdict[key]])
+        print counter
+        util.write_csv_inlist('notmatched.csv',DBIS_paperlist)
+
     def getYears(self,file,label):
         paperYear=dict()
         counter=0
@@ -322,6 +362,43 @@ class ParseCleanedData:
                 if counter%200==0:
                     pickle.dump(paperYear, open('notmatchedpaperyear_'+label+'.dat', "wb"), True)
 
+
+
+class Statistics:
+    def __init__(self,focusedDict,paper_confDict,confDict,DBIS_dict):
+        self.focusedDict=focusedDict
+        # self.paperDict=paperDict
+        self.paper_confDict=paper_confDict
+        self.confDict=confDict
+        self.DBIS_dict=DBIS_dict
+        self.year_start=1990
+        self.year_end=2016
+        self.yearDict=dict()
+        confDict_dbis=dict()
+        for conf in DBIS_dict:
+            confDict_dbis[conf]=0
+        for year in range(self.year_start,self.year_end):
+            newconfDict=confDict_dbis.copy()
+            self.yearDict[str(year)]=newconfDict
+    
+    def yearDistribution(self):
+        for key in self.focusedDict:
+            thisYear=self.focusedDict[key]
+            if thisYear in self.yearDict:
+                conf=self.paper_confDict[key]
+                if conf not in self.DBIS_dict: continue
+                self.yearDict[thisYear][conf]=self.yearDict[thisYear][conf]+1
+    
+    def output(self):
+        outputlist=[]
+        for year in self.yearDict:
+            confDict_oneyear=self.yearDict[year]
+            for conf in confDict_oneyear:
+                outputlist.append([year,conf,self.confDict[conf],confDict_oneyear[conf]])
+        
+        util.write_csv_inlist('statistic_conf_byyear.csv',outputlist)
+
+
 class ProcessDataBase:
     def __init__(self):
         self.connect = pymysql.Connect(
@@ -333,16 +410,38 @@ class ProcessDataBase:
         charset='utf8')
         self.cursor = self.connect.cursor()
         self.selectStr="""SELECT * FROM paper WHERE title = %s and conference = %s """
+        self.selectStr_easy="""SELECT * FROM paper WHERE title = %s """
 
     def test(self):
-        papername="Why do Users Tag? Detecting Users' Motivation for Tagging in Social Tagging Systems."
+        papername="Space-optimal heavy hitters with strong error bounds."
         papername= self.connect.escape(papername)
-        confname='ICWSM'
+        confname='PODS'
         confname= self.connect.escape(confname)
         print self.selectStr % (papername,confname)
         self.cursor.execute(self.selectStr % (papername,confname))
         for row in self.cursor.fetchall():
             print row[1]
+    
+    def selectData_twokey(self,outputfile,key1,key2):
+        selectStr="""SELECT * FROM paper WHERE conference like %s or conference like %s """
+        key1= self.connect.escape(key1)
+        key2= self.connect.escape(key2)
+        self.cursor.execute(selectStr % (key1,key2))
+        outputlist=[]
+        for row in self.cursor.fetchall():
+            outputlist.append([row[0].encode('utf-8'),row[1],row[2].encode('utf-8')])
+        util.write_csv_inlist(outputfile,outputlist)
+
+    def selectData_onekey(self,outputfile,key):
+        selectStr="""SELECT * FROM paper WHERE conference like %s """
+        key= self.connect.escape(key)
+        
+        self.cursor.execute(selectStr % (key))
+        outputlist=[]
+        for row in self.cursor.fetchall():
+            outputlist.append([row[0].encode('utf-8'),row[1],row[2].encode('utf-8')])
+        util.write_csv_inlist(outputfile,outputlist)
+
 
     def getYear_all(self,paperDict,confDict,paper_confDict):
         outputlist=[]
@@ -371,7 +470,7 @@ class ProcessDataBase:
             for row in outputlist:
                 writer.writerow(row)
 
-    def getYear_DBIS(self,paperDict,confDict,paper_confDict,DBIS_dict):
+    def getYear_DBIS(self,paperDict,confDict,paper_confDict,DBIS_dict,myfilter=None):
         outputlist=[]
         counter=0
         counter_dbis=0
@@ -402,21 +501,78 @@ class ProcessDataBase:
             for row in outputlist:
                 writer.writerow(row)
 
+    def getYear_DBIS_notmatched(self,paperDict,notmatchDict):
+        outputlist=[]
+        counter=0
+        for key in notmatchDict:
+            papername=paperDict[key]
+            if papername[0]=='"' and papername[-1]=='"':
+                papername=papername[1:-1]
+            papername= self.connect.escape(papername)
+
+            # print papername
+            self.cursor.execute(self.selectStr_easy % (papername))
+            resultlist=self.cursor.fetchall()
+            if len(resultlist)>0:
+                print resultlist
+                year=resultlist[0][1]
+                outputlist.append([key,year])
+                counter+=1
+
+        print counter
+        util.write_csv_inlist('paperwithyear_dbis.csv',outputlist)
+    
+    def getYear_DBIS_filetered(self,paperDict,PaperRawdict,filterDict):
+        outputlist=[]
+        outputlist_null=[]
+        counter=0
+        counter_total=0
+
+        for key in paperDict:
+            if key in filterDict: continue
+            papername=PaperRawdict[key]
+            if papername[0]=='"' and papername[-1]=='"':
+                papername=papername[1:-1]
+            papername= self.connect.escape(papername)
+
+            self.cursor.execute(self.selectStr_easy % (papername))
+            resultlist=self.cursor.fetchall()
+            if len(resultlist)>0:
+                print resultlist
+                year=resultlist[0][1]
+                outputlist.append([key,year])
+                counter+=1
+            else:
+                outputlist_null.append([key,papername])
+            counter_total+=1
+            print str(counter_total)+'/'+str(len(paperDict)-len(filterDict))+' '+papername
+
+        print counter
+        util.write_csv_inlist('paperwithyear_dbis.csv',outputlist)
+        util.write_csv_inlist('paperwithnoresults.csv',outputlist_null)
+
+
 if __name__ == "__main__":
-    # pp=ParseOriginalData()
-    # pp.readPaper('E:\\data\\dblp\\base-csv\\paper.csv')
-    # pp.updatePaper('./original.csv')
+    pod=ParseOriginalData()
+    pod.readPaper('E:\\data\\dblp\\base-csv\\paper.csv')
+    pod.updatePaper('E:\\data\\dblp\\mydata\\original.csv')
+
+    paperObjDict=pickle.load(open('paperDict_obj.dat', "rb"))
+    pod.matchAminerAndDBLP(paperObjDict)
     # with open('original_withvenue.csv', 'wb') as f:
     #     writer = csv.writer(f)
     #     for key in paperDict:
     #         writer.writerow([paperDict[key].id,paperDict[key].title,paperDict[key].year,paperDict[key].venue])
     # pp.run('E:\\data\\dblp\\base-csv\\paper.csv','E:\\data\\dblp\\base-csv\\person.csv','E:\\data\\dblp\\original-data\\AMiner-Coauthor.txt','E:\\data\\dblp\\base-csv\\refs.csv')
-    pcd=ParseCleanedData()
-    paperdict=pcd.readPaper_raw('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt')
-    confdict=pcd.readConf_raw('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_conf.txt')
-    paper_confdict=pcd.readPaper_Conf('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt')
-    dbis_dict=pcd.readDBISDict('E:\\data\\dblp\\mydata\\DBIStoCleaned.csv')
-
+    
+    # pcd=ParseCleanedData()
+    # paperdict=pcd.readPaper_raw('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt')
+    # confdict=pcd.readConf_raw('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_conf.txt')
+    # paper_confdict=pcd.readPaper_Conf('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt')
+    # dbis_dict=pcd.readDBISDict('E:\\data\\dblp\\mydata\\DBIStoCleaned_20.csv')
+    
+    # pcd.findDBIS_paper_withfilter(paper_confdict,paperdict,dbis_dict,myfilter)
+  
     # filterdict=pcd.findDBIS_paper('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt','E:\\data\\dblp\\mydata\\DBIStoCleaned.csv')
     # pcd.matchTime(paperDict,'C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt',filterdict)
     # pcd.outputProtentialPapers(paperDict,'./notmatched.csv','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt','E:\\data\\dblp\\mydata\\DBIStoCleaned.csv',)
@@ -426,6 +582,25 @@ if __name__ == "__main__":
     # authors = dblp.search('dfahkfhnlkamefl;keakwf;la')
     # print authors.empty
     # print authors["Year"][0]==None
-    pdb=ProcessDataBase()
+
+    # focusedDict=util.read_csv_withdict('E:\\data\\dblp\\mydata\\paperwithyear_dbis.csv',0,1)
+    # pdb=ProcessDataBase()
+    # notmatchDict=util.read_csv_withdict('notmatched.csv',0,1)
+    # pdb.getYear_DBIS_filetered(filterdict,paperdict,focusedDict)
+    # pdb.selectData_twokey('./temporal/ecml&pkdd.csv','%pkdd%','%ecml%')
+
     # pdb.test()
-    pdb.getYear_DBIS(paperdict,confdict,paper_confdict,dbis_dict)
+    # pdb.getYear_DBIS(paperdict,confdict,paper_confdict,dbis_dict)
+
+    # focusedDict=util.read_csv_withdict('E:\\data\\dblp\\mydata\\paperwithyear_dbis.csv',0,1)
+    # sta=Statistics(focusedDict,paper_confdict,confdict,dbis_dict)
+    # sta.yearDistribution()
+    # sta.output()
+
+    # outputlist=[]
+    # print len(filterdict)-len(focusedDict)
+    # for key in filterdict:
+    #     if key in focusedDict: continue
+    #     papername=paperdict[key]
+    #     outputlist.append([papername])
+    # util.write_csv_inlist('./temporal/nopapers.csv',outputlist)
