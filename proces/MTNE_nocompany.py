@@ -18,7 +18,6 @@ from myclass.myobj import Paper,Person,Author
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
 
 class MTNE_nocompany():
-    t = 100000.
     # number of embedding dimensions
     m=32
     # number of sparse embedding dimensions
@@ -32,8 +31,8 @@ class MTNE_nocompany():
     rho=1
     gamma=1
 
-    epsilon=0.01
-    t = 10000000.
+    epsilon=0.1
+    t = 10000.
 
 
     def __init__(self,edgeDict,nodeIndexDict,isBinary=True):
@@ -131,7 +130,9 @@ class MTNE_nocompany():
                 U=U-nita*LU
                 U=self.chechnegtive(U,None,None)
 
-                LD=self.lamda*np.dot(Aprime.T,np.dot(Aprime,D))+self.rho*D
+                p1=np.dot(Aprime,D)-U
+                p2=np.dot(Aprime.T,p1)
+                LD=self.lamda*p2+self.rho*D
                 D=D-nita*LD
 
                 LA=self.lamda*np.dot(np.dot(Aprime,D),D.T)+self.rho*Aprime
@@ -147,8 +148,17 @@ class MTNE_nocompany():
 
             E=self.concatenateMatrixInList(Aprime_list,0)
 
-            eignenVal,F=self.eigenVectorAndEigenValue(cosine_similarity(E),self.k)
+            simM=cosine_similarity(E)
+            eignenVal,F=self.eigenVectorAndEigenValue(simM,self.k)
+
+            up=np.dot(E[0],E[1].T)
+            fm=np.linalg.norm(E[0])
+            sm=np.linalg.norm(E[1])
+            sval=up/(fm*sm)
+            print sval
             print 'eignenVal: '+str(eignenVal)
+            print F[0]
+            print F[1]
 
             # LE=self.gamma*np.dot(F,F.T)
             # E=E-nita*LE
