@@ -16,15 +16,17 @@ import snap
 import math
 import collections
 import numpy as np
+from MTNE_nocompany import MTNE_nocompany
 
 class InitNetworks:
 
     startYear_total=1998
     endYear=2014
-    startYear_learning=2000
+    startYear_learning=2005
     gap=2
     hisGap=10
     rou=0.4
+    lowerVal=0.005
 
     def __init__(self,paperObjFile,authorObjFile,yearCountFile):
         self.paperObjDict=pickle.load(open(paperObjFile, "rb"))
@@ -66,18 +68,18 @@ class InitNetworks:
                         newDict[key]=nodeDict[key]
                     else:
                         author=nodeDict[key]
-                        if author.val+author.hisval>=0.003:
+                        if author.val+author.hisval>=self.lowerVal:
                             newDict[key]=author
                 else:
                     author=nodeDict[key]
-                    if author.val+author.hisval>=0.003:
+                    if author.val+author.hisval>=self.lowerVal:
                         newDict[key]=author
             self.author_nodes[i]=newDict
         return self.author_nodes
     
     def generateEdge(self):
-        # edgeDict=collections.OrderedDict()
-        # edgeIndexDict=collections.OrderedDict()
+        edgeDict=collections.OrderedDict()
+        edgeIndexDict=collections.OrderedDict()
         for yearkey in self.author_nodes:
             author_node=self.author_nodes[yearkey]
             key_list=[]
@@ -101,10 +103,13 @@ class InitNetworks:
                             val=math.exp(-self.rou*(yearkey-theYear))
                             ajmatrix[i][akey_index]=ajmatrix[i][akey_index]+val
                             # ajmatrix[akey_index][i]=ajmatrix[i][akey_index]
-            b = np.nonzero(ajmatrix)
-            print(np.array(b).ndim)
+            # b = np.nonzero(ajmatrix)
+            # print(np.array(b).ndim)
             np.savetxt('./proces/temporal/year_'+str(yearkey)+'.csv',ajmatrix,fmt='%d',delimiter=',')
             util.write_csv_inlist('./proces/temporal/nodeslist_'+str(yearkey)+'.csv',key_list)
+            edgeDict[yearkey]=ajmatrix
+            edgeIndexDict[yearkey]=key_list
+        return edgeDict,edgeIndexDict
 
 
 
@@ -123,6 +128,9 @@ if __name__ == "__main__":
 
     edgeDict,nodeIndexDict=init.generateEdge()
 
+    pickle.dump(edgeDict, open('edgeDict.dat', "wb"), True)
+    pickle.dump(nodeIndexDict, open('nodeIndexDict.dat', "wb"), True)
+
     # for i in range(1999,2016):
     #     author_nodes=init.selectAuthors_forARange(i)
     #     outputlist=[]
@@ -131,3 +139,9 @@ if __name__ == "__main__":
     #         outputlist.append([key,author.val,author.hisval,author.val+author.hisval])
 
     #     util.write_csv_inlist('./proces/temporal/nodes_'+str(i)+'.csv',outputlist)
+
+    mtne=MTNE_nocompany(edgeDict,nodeIndexDict)
+    u_list,a_list,F=mtne.MTNE()
+    pickle.dump(u_list, open('u_list.dat', "wb"), True)
+    pickle.dump(a_list, open('a_list.dat', "wb"), True)
+    pickle.dump(F, open('F.dat', "wb"), True)
