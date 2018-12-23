@@ -114,7 +114,7 @@ class InitNetworks:
 
 
 if __name__ == "__main__":
-    init=InitNetworks('./proces/paperDict_obj.dat','./proces/authorDict_obj.dat','E:\\data\\dblp\\mydata\\yearCount.dat')
+    init=InitNetworks('./proces/paperDict_obj.dat','./proces/authorDict_obj.dat','./proces/yearCount.dat')
     nodedict=init.selectAuthors()
 
     # for yearkey in nodedict:

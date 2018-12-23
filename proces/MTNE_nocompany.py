@@ -9,13 +9,13 @@ import re
 import csv
 import time
 import HTMLParser
-import dblp
 import cPickle as pickle
 import collections
 import numpy as np
 sys.path.append('..')
 from myclass.myobj import Paper,Person,Author
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
+from sklearn.decomposition import PCA
 
 class MTNE_nocompany():
     # number of embedding dimensions
@@ -32,7 +32,7 @@ class MTNE_nocompany():
     gamma=1
 
     epsilon=0.1
-    t = 10000.
+    t = 1000000.
 
 
     def __init__(self,edgeDict,nodeIndexDict,isBinary=True):
@@ -147,18 +147,22 @@ class MTNE_nocompany():
                 counter+=1
 
             E=self.concatenateMatrixInList(Aprime_list,0)
+            pca = PCA(n_components=5, svd_solver='full')
+            E_new=pca.fit_transform(E)   
 
-            simM=cosine_similarity(E)
+            
+            
+            simM=cosine_similarity(E_new)
             eignenVal,F=self.eigenVectorAndEigenValue(simM,self.k)
 
-            up=np.dot(E[0],E[1].T)
-            fm=np.linalg.norm(E[0])
-            sm=np.linalg.norm(E[1])
-            sval=up/(fm*sm)
-            print sval
+            # up=np.dot(E[0],E[1].T)
+            # fm=np.linalg.norm(E[0])
+            # sm=np.linalg.norm(E[1])
+            # sval=up/(fm*sm)
+            # print sval
             print 'eignenVal: '+str(eignenVal)
-            print F[0]
-            print F[1]
+            # print F[0]
+            # print F[1]
 
             # LE=self.gamma*np.dot(F,F.T)
             # E=E-nita*LE
