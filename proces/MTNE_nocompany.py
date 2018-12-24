@@ -147,20 +147,22 @@ class MTNE_nocompany():
                 counter+=1
 
             E=self.concatenateMatrixInList(Aprime_list,0)
-            pca = PCA(n_components=5, svd_solver='full')
+            pca = PCA(n_components=self.k, svd_solver='full')
             E_new=pca.fit_transform(E)   
 
             
             
             simM=cosine_similarity(E_new)
-            eignenVal,F=self.eigenVectorAndEigenValue(simM,self.k)
+            simM=(simM+1)/2
+            simMD,simML=self.getLaplacian(simM)
+            eignenVal,F=self.eigenVectorAndEigenValue(simML,self.k)
 
             # up=np.dot(E[0],E[1].T)
             # fm=np.linalg.norm(E[0])
             # sm=np.linalg.norm(E[1])
             # sval=up/(fm*sm)
             # print sval
-            print 'eignenVal: '+str(eignenVal)
+            # print 'eignenVal: '+str(eignenVal)
             # print F[0]
             # print F[1]
 
@@ -173,7 +175,20 @@ class MTNE_nocompany():
             #     Aprime_list[i]=E[gIndex:length]
             #     gIndex=gIndex+length
 
-            loss_t1+=self.gamma*eignenVal
+            for i in range(E.shape[0]):
+                loss_ij=E[i]-E[i]
+                fm=np.linalg.norm(E[i])
+                for j in range(E.shape[0]):
+                    sm=np.linalg.norm(E[j])
+                    loss_ij+=(self.gamma*np.linalg.norm(F[i]-F[j])*(E[j]*(fm*sm)-E[i]*sm*np.dot(E[i],E[j].T)))/((fm*sm)*(fm*sm))
+                E[i]=E[i]-nita*loss_ij
+
+            Aprime_list=self.updateMatrixInList(E,Aprime_list)
+            
+            loss_last=eignenVal
+            # loss_last=self.laplacianLoss(simM,F)
+            print 'loss_last: '+str(loss_last)
+            loss_t1+=self.gamma*loss_last
 
 
             if loss_t<loss_t1 and loss_t!=0:
@@ -203,6 +218,13 @@ class MTNE_nocompany():
             newN=np.dot(M,F)
             return np.linalg.norm(N-self.getMask(N)*newN)
 
+    def laplacianLoss(self,W,M):
+        val=0.0
+    # print M.shape
+        for i in range(M.shape[0]):
+            for j in range(i+1,M.shape[0]):
+                val+=W[i][j]*np.linalg.norm(M[i]-M[j])
+        return val
     def concatenateMatrixInList(self,matrixList,axis):
         if axis==0:
             E=np.empty([0,self.p])
@@ -212,6 +234,14 @@ class MTNE_nocompany():
             E=np.concatenate((E, matrixList[i]), axis=axis)
 
         return E
+
+    def updateMatrixInList(self,E,matrixList):
+        globalLen=0
+        for i in range(len(matrixList)):
+            shape_i=matrixList[i].shape[0]
+            matrixList[i]=E[globalLen:globalLen+shape_i]
+            globalLen=globalLen+shape_i
+        return matrixList
 
     def initX(self,Ajen,alpha):
         secondOrder=cosine_similarity(Ajen)
@@ -253,3 +283,11 @@ class MTNE_nocompany():
                     if M[i,j]<0:
                         M[i,j]=0
         return M
+
+    def getLaplacian(self,W):
+        D = np.zeros((W.shape[0], W.shape[1]))
+        L = np.zeros((W.shape[0], W.shape[1]))
+        for i in range(W.shape[1]):
+            D[i][i]=np.sum(W[:,i])
+        L=D-W
+        return [D,L]
