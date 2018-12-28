@@ -17,6 +17,7 @@ import math
 import collections
 import numpy as np
 from MTNE_nocompany import MTNE_nocompany
+from MTNE_learnSimilarity import MTNE_learnSimilarity_nocompany
 
 class InitNetworks:
 
@@ -140,8 +141,14 @@ if __name__ == "__main__":
 
     #     util.write_csv_inlist('./proces/temporal/nodes_'+str(i)+'.csv',outputlist)
 
-    mtne=MTNE_nocompany(edgeDict,nodeIndexDict)
-    u_list,a_list,F=mtne.MTNE()
-    pickle.dump(u_list, open('u_list.dat', "wb"), True)
-    pickle.dump(a_list, open('a_list.dat', "wb"), True)
-    pickle.dump(F, open('F.dat', "wb"), True)
+    # mtne=MTNE_nocompany(edgeDict,nodeIndexDict)
+    # u_list,a_list,F=mtne.MTNE()
+    # pickle.dump(u_list, open('u_list.dat', "wb"), True)
+    # pickle.dump(a_list, open('a_list.dat', "wb"), True)
+    # pickle.dump(F, open('F.dat', "wb"), True)
+
+    mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict)
+    a_list,f_list,s=mtne.MTNE()
+    pickle.dump(a_list, open('A_list.dat', "wb"), True)
+    pickle.dump(f_list, open('F_list.dat', "wb"), True)
+    pickle.dump(s, open('S.dat', "wb"), True)

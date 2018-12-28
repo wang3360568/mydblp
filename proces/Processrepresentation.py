@@ -42,7 +42,7 @@ class Clustering:
                 outputList.append([theKey,self.authorObjDict[theKey].name,key,clu])
             gobalIndex+=length
 
-        util.write_csv_inlist('./proces/temporal/authorCluster.csv',outputList)
+        util.write_csv_inlist('./temporal/authorCluster.csv',outputList)
 
 if __name__ == "__main__":
     clu=Clustering('../u_list.dat','../a_list.dat','../F.dat','../edgeDict.dat','../nodeIndexDict.dat','./paperDict_obj.dat','./authorDict_obj.dat')

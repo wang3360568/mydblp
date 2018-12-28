@@ -8,6 +8,7 @@ import util
 import re
 import csv
 import time
+import random
 import HTMLParser
 import cPickle as pickle
 import collections
@@ -17,22 +18,27 @@ from myclass.myobj import Paper,Person,Author
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
 from sklearn.decomposition import PCA
 
-class MTNE_nocompany():
+class MTNE_learnSimilarity_nocompany():
     # number of embedding dimensions
-    m=32
+    m=16
     # number of sparse embedding dimensions
-    p=128
+    p=64
     # number of clusters
     k=12
 
-    # paremeter for the second order
-    alpha=1
-    lamda=0.1
-    rho=1
-    gamma=1
+    theta=5 # paremeter for the second order
+    alpha=1 # for ||S||
+    lamda=10 # for ||W||
+    rho=0.001 # for tr(FLsF)
+    gamma=1 # for ||D||
+    epsilon=1 # for SI-1
+    beta=10 # for ||DA-F||
+    eta=10 # for ||I(S-f(X))||
 
-    epsilon=0.1
-    t = 1000000.
+
+    lamda_pgd=100
+
+    t = 100000000.
 
 
     def __init__(self,edgeDict,nodeIndexDict,isBinary=True):
@@ -50,17 +56,29 @@ class MTNE_nocompany():
 
 
     def MTNE(self):
+        # dictionary
         D=np.random.rand(self.p, self.m)
 
+        lambda_ff_list=[]
+
+        # Author
         Aprime_list=[]
+        # weight
+        W_list=[]
+        # dense vector
+        F_list=[]
+        # similarity local
         X_list=[]
-        Xmask_list=[]
-        U_list=[]
-        B_list=[]
+        X_mask_list=[]
+
 
         # all sparse embeddings across all timestamps
 
-        F=np.zeros((self.q,self.k))
+        # F_big=np.zeros((self.q,self.k))
+        X_big=np.zeros((self.q,self.q))
+        X_mask_big=np.zeros((self.q,self.q))
+        
+        S=np.random.rand(self.q,self.q)
 
         indexDict_local2global=collections.OrderedDict()
         indexDict_global2local=dict()
@@ -71,13 +89,11 @@ class MTNE_nocompany():
 
             A=self.edgeDict[key]
 
-            X=self.initX(A,self.alpha)
+            X=self.initX(A,self.theta)
             X=X/(X.max()-X.min())
             X_list.append(X)
 
-            xmask=self.getMask(X)
-            Xmask_list.append(xmask)
-
+            X_mask=np.zeros((self.q,self.q))
             # number of nodes in the current time
             n=A.shape[0]
 
@@ -90,14 +106,27 @@ class MTNE_nocompany():
                 indexDict_global2local[globalIndex+i]=(key,i)
             indexDict_local2global[key]=indexDict
 
+            for i in range(n):
+                i_big=indexDict[i]
+                for j in range(n):
+                    j_big=indexDict[j]
+                    X_big[i_big,j_big]=X[i,j]
+                    X_mask[i_big,j_big]=1.
+                    X_mask_big[i_big,j_big]=1.
+            X_mask_list.append(X_mask)
+
             globalIndex+=n
 
-            U = np.random.rand(n, self.m)
-            U_list.append(U)
+            W = np.random.rand(n, self.p)
+            W_list.append(W)
 
-            B = np.random.rand(n, self.m)
-            B_list.append(B)
+            F = np.random.rand(n, self.m)
+            F_list.append(F)
+
+            lambda_ff_list.append(random.random())
         
+        F_big=self.concatenateMatrixInList(F_list,self.m,0)
+
         loss_t1=1000000000.0
 
         print loss_t1
@@ -115,95 +144,86 @@ class MTNE_nocompany():
             for key in self.edgeDict:
                 
                 X=X_list[counter]
-                U=U_list[counter]
-                B=B_list[counter]
+                W=W_list[counter]
+                F=F_list[counter]
                 Aprime=Aprime_list[counter]
-                Xmask=Xmask_list[counter]
+                indexDict=indexDict_local2global[key]
+                lambda_ff=lambda_ff_list[counter]
+                X_mask=X_mask_list[counter]
 
-            # number of nodes in the current time
+                P=self.getP(X_mask,F_big,X_big)
 
-                LB=np.dot(Xmask*(np.dot(B,U.T)-X),U)+self.rho*B
-                B=B-nita*LB
-                B=self.chechnegtive(B,None,None)
+                n=X.shape[0]
 
-                LU=np.dot(Xmask*(np.dot(B,U.T)-X),B)+self.lamda*(U-np.dot(Aprime,D))+self.rho*U
-                U=U-nita*LU
-                U=self.chechnegtive(U,None,None)
+                for i in range(n):
+                    # for A
+                    z=Aprime[i]-nita*(np.dot(np.dot(Aprime[i],W.T)-X[i],W)+self.beta*np.dot(np.dot(Aprime[i],D)-F[i],D.T))
+                    update=np.maximum(np.zeros(np.shape(z)),np.abs(z)-nita*self.lamda_pgd)
+                    Aprime[i]=np.sign(z)*update
 
-                p1=np.dot(Aprime,D)-U
-                p2=np.dot(Aprime.T,p1)
-                LD=self.lamda*p2+self.rho*D
+                    # for F
+                    lf_part1=self.beta*F[i]-np.dot(Aprime[i],D)
+                    lf_part2=np.zeros(self.m)
+                    i_big_index=indexDict[i]
+                    for j in range(self.q):
+                        lf_part2+=self.rho*(F[i]-F_big[j])*S[i_big_index,j]
+                    
+                    val1=np.dot(F[i],F_big.T)
+                    val2=val1-np.ones(self.q)
+                    val3=np.dot(val2,F_big)
+                    lf_part3=0.01*val3
+                    F[i]=F[i]-nita*(lf_part1+lf_part2+lf_part3)
+                    F_big[i_big_index]=F[i]
+
+                    # vec=np.dot(F[i],F_big.T)-np.ones(self.q)
+                    # # print vec.shape
+                    # lambda_ff=lambda_ff-nita*np.linalg.norm(vec)
+
+                    # for S
+                    ls=(S[i_big_index]-P[i_big_index])-self.epsilon*np.ones(self.q)-self.alpha*S[i_big_index]
+                    S[i_big_index]=S[i_big_index]-nita*ls
+
+                Aprime=self.chechnegtive(Aprime,None,None)
+
+                LW=np.dot((np.dot(W,Aprime.T)-X),Aprime)+self.lamda*W
+                W=W-nita*LW
+                W=self.chechnegtive(W,None,None)
+
+                p1=np.dot(Aprime,D)-F
+                p2=self.beta*np.dot(Aprime.T,p1)
+                LD=p2+self.gamma*D
                 D=D-nita*LD
 
-                LA=self.lamda*np.dot(np.dot(Aprime,D),D.T)+self.rho*Aprime
-                Aprime=Aprime-nita*LA
-
-                U_list[counter]=U
-                B_list[counter]=B
+                W_list[counter]=W
+                F_list[counter]=F
                 Aprime_list[counter]=Aprime
+                lambda_ff_list[counter]=lambda_ff
 
-                loss_t1_part=self.lossfuction(X,B,U,Aprime,D)
+                loss_t1_part=self.lossfuction(X,W,Aprime,F,D)
                 loss_t1+=loss_t1_part
                 counter+=1
-
-            E=self.concatenateMatrixInList(Aprime_list,0)
-            # pca = PCA(n_components=self.k, svd_solver='full')
-            # E_new=pca.fit_transform(E)   
-
             
             
-            simM=cosine_similarity(E)
-            simM=(simM+1)/2
-            simMD,simML=self.getLaplacian(simM)
-            eignenVal,F=self.eigenVectorAndEigenValue(simML,self.k)
-
-            # up=np.dot(E[0],E[1].T)
-            # fm=np.linalg.norm(E[0])
-            # sm=np.linalg.norm(E[1])
-            # sval=up/(fm*sm)
-            # print sval
-            # print 'eignenVal: '+str(eignenVal)
-            # print F[0]
-            # print F[1]
-
-            # LE=self.gamma*np.dot(F,F.T)
-            # E=E-nita*LE
-
-            # gIndex=0
-            # for i in range(len(Aprime_list)):
-            #     length=len(Aprime_list[i])
-            #     Aprime_list[i]=E[gIndex:length]
-            #     gIndex=gIndex+length
-
-            # for i in range(E.shape[0]):
-            #     loss_ij=E[i]-E[i]
-            #     fm=np.linalg.norm(E[i])
-            #     for j in range(E.shape[0]):
-            #         sm=np.linalg.norm(E[j])
-            #         loss_ij+=(self.gamma*np.linalg.norm(F[i]-F[j])*(E[j]*(fm*sm)-E[i]*sm*np.dot(E[i],E[j].T)))/((fm*sm)*(fm*sm))
-            #     E[i]=E[i]-nita*loss_ij
-
-            # Aprime_list=self.updateMatrixInList(E,Aprime_list)
-            
-            loss_last=eignenVal
             # loss_last=self.laplacianLoss(simM,F)
-            print 'loss_last: '+str(loss_last)
-            loss_t1+=self.gamma*loss_last
+            simMD,simML=self.getLaplacian(S)
+            trval=np.trace(np.dot(np.dot(F_big.T,simML),F_big))
+            gapval=np.linalg.norm(X_mask_big*(S-X_big))
 
+            loss_t1+=self.rho*trval+self.eta*gapval
 
             if loss_t<loss_t1 and loss_t!=0:
                 break
         # print loss_t
             print loss_t1
-        return [U_list,Aprime_list,F]
+        return [Aprime_list,F_list,S]
 
-    def lossfuction(self,X,B,U,A,D):
+    def lossfuction(self,X,W,A,F,D):
 
         # part1=0.5*(loss(AD,U.T,V,True)+loss(D,V.T,ND,False)+loss(A,U.T,NA,False))
-        part1=0.5*(self.loss(X,B,U.T,True))
-        part2=0.5*self.lamda*(self.loss(U,A,D,False))
+        part1=0.5*(self.loss(X,W,A.T,False))
+        part2=0.5*self.beta*(self.loss(F,A,D,False))
         # part2=tau*(np.linalg.norm(U)+np.linalg.norm(V)+np.linalg.norm(NA)+np.linalg.norm(ND))
-        part3=0.5*self.rho*(np.linalg.norm(U)+np.linalg.norm(B)+np.linalg.norm(A)+np.linalg.norm(D))
+        part3=0.5*(self.lamda*np.linalg.norm(W)+self.gamma*np.linalg.norm(D))
 
         print 'part1: '+ str(part1)
         print 'part2: '+ str(part2)
@@ -225,16 +245,27 @@ class MTNE_nocompany():
             for j in range(i+1,M.shape[0]):
                 val+=W[i][j]*np.linalg.norm(M[i]-M[j])
         return val
-    def concatenateMatrixInList(self,matrixList,axis):
+    def concatenateMatrixInList(self,matrixList,dim,axis):
         if axis==0:
-            E=np.empty([0,self.p])
+            E=np.empty([0,dim])
         elif axis==1:
-            E=np.empty([self.p,0])
+            E=np.empty([dim,0])
         for i in range(len(matrixList)):
             E=np.concatenate((E, matrixList[i]), axis=axis)
 
         return E
+    
+    def getP(self,Xmask,F,X_big):
+        size=F.shape[0]
+        Q=np.zeros((size,size))
+        P=np.zeros((size,size))
+        for i in range(size):
+            for j in range(size):
+                Q[i,j]=np.linalg.norm(F[i]-F[j])
 
+        P=(2*Xmask*X_big-self.rho*Q)/(2*Xmask+ np.full((size,size), self.alpha))
+        return P
+    
     def updateMatrixInList(self,E,matrixList):
         globalLen=0
         for i in range(len(matrixList)):
@@ -244,7 +275,7 @@ class MTNE_nocompany():
         return matrixList
 
     def initX(self,Ajen,alpha):
-        secondOrder=cosine_similarity(Ajen)
+        secondOrder=np.dot(Ajen,Ajen)
         return Ajen+alpha*secondOrder
 
     def eigenVectorAndEigenValue(self,M,k):
