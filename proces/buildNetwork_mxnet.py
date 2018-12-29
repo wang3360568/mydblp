@@ -12,9 +12,10 @@ import cPickle as pickle
 sys.path.append('./')
 from myclass.myobj import Paper,Person,Author,Person_node
 # sys.path.append('../snap_jure')
+import snap
 import math
 import collections
-import numpy as np
+import mxnet as mx
 from MTNE_nocompany import MTNE_nocompany
 from MTNE_learnSimilarity import MTNE_learnSimilarity_nocompany
 
@@ -86,7 +87,7 @@ class InitNetworks:
             for key in author_node:
                 key_list.append(key)
             mlength=len(key_list)
-            ajmatrix=np.zeros((mlength,mlength))
+            ajmatrix=mx.ndarray.zeros((mlength,mlength))
 
             for i in range(mlength):
                 ikey=key_list[i]
@@ -105,8 +106,8 @@ class InitNetworks:
                             # ajmatrix[akey_index][i]=ajmatrix[i][akey_index]
             # b = np.nonzero(ajmatrix)
             # print(np.array(b).ndim)
-            np.savetxt('./proces/temporal/year_'+str(yearkey)+'.csv',ajmatrix,fmt='%d',delimiter=',')
-            util.write_csv_inlist('./proces/temporal/nodeslist_'+str(yearkey)+'.csv',key_list)
+            # np.savetxt('./proces/temporal/year_'+str(yearkey)+'.csv',ajmatrix,fmt='%d',delimiter=',')
+            # util.write_csv_inlist('./proces/temporal/nodeslist_'+str(yearkey)+'.csv',key_list)
             edgeDict[yearkey]=ajmatrix
             edgeIndexDict[yearkey]=key_list
         return edgeDict,edgeIndexDict
