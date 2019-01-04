@@ -12,6 +12,7 @@ import cPickle as pickle
 sys.path.append('./')
 from myclass.myobj import Paper,Person,Author,Person_node
 # sys.path.append('../snap_jure')
+from setupNetwork import SetupNetwork
 import math
 import collections
 import numpy as np
@@ -26,7 +27,7 @@ class InitNetworks:
     gap=2
     hisGap=10
     rou=0.4
-    lowerVal=0.005
+    lowerVal=0.005 #0.005
 
     def __init__(self,paperObjFile,authorObjFile,yearCountFile):
         self.paperObjDict=pickle.load(open(paperObjFile, "rb"))
@@ -111,8 +112,6 @@ class InitNetworks:
             edgeIndexDict[yearkey]=key_list
         return edgeDict,edgeIndexDict
 
-
-
 if __name__ == "__main__":
     init=InitNetworks('./proces/paperDict_obj.dat','./proces/authorDict_obj.dat','./proces/yearCount.dat')
     nodedict=init.selectAuthors()
@@ -128,8 +127,13 @@ if __name__ == "__main__":
 
     edgeDict,nodeIndexDict=init.generateEdge()
 
-    pickle.dump(edgeDict, open('edgeDict.dat', "wb"), True)
-    pickle.dump(nodeIndexDict, open('nodeIndexDict.dat', "wb"), True)
+    sN=SetupNetwork(edgeDict,nodeIndexDict,init.paperObjDict)
+    edgeDict_new,nodeIndexDict_new=sN.buildNetwork()
+    attributeslist=sN.getNodeAttributes()
+
+    pickle.dump(edgeDict_new, open('edgeDict_'+str(init.lowerVal)+'.dat', "wb"), True)
+    pickle.dump(nodeIndexDict_new, open('nodeIndexDict_'+str(init.lowerVal)+'.dat', "wb"), True)
+    pickle.dump(attributeslist, open('attributeslist_'+str(init.lowerVal)+'.dat', "wb"), True)
 
     # for i in range(1999,2016):
     #     author_nodes=init.selectAuthors_forARange(i)
@@ -146,8 +150,8 @@ if __name__ == "__main__":
     # pickle.dump(a_list, open('a_list.dat', "wb"), True)
     # pickle.dump(F, open('F.dat', "wb"), True)
 
-    mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict)
-    a_list,f_list,s=mtne.MTNE()
-    pickle.dump(a_list, open('A_list.dat', "wb"), True)
-    pickle.dump(f_list, open('F_list.dat', "wb"), True)
-    pickle.dump(s, open('S.dat', "wb"), True)
+    # mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict)
+    # a_list,f_list,s=mtne.MTNE()
+    # pickle.dump(a_list, open('A_list.dat', "wb"), True)
+    # pickle.dump(f_list, open('F_list.dat', "wb"), True)
+    # pickle.dump(s, open('S.dat', "wb"), True)

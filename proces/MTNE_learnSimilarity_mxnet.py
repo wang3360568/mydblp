@@ -328,7 +328,6 @@ if __name__ == "__main__":
 
         edgeDict,nodeIndexDict=init.generateEdge()
 
-
         mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict)
         a_list,f_list,s=mtne.MTNE()
         pickle.dump(a_list, open('A_list.dat', "wb"), True)

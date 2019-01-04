@@ -13,7 +13,7 @@ import HTMLParser
 import cPickle as pickle
 import collections
 import numpy as np
-sys.path.append('..')
+sys.path.append('.')
 from myclass.myobj import Paper,Person,Author
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
 from sklearn.decomposition import PCA
@@ -27,9 +27,9 @@ class MTNE_learnSimilarity_nocompany():
     k=12
 
     theta=5 # paremeter for the second order
-    alpha=1 # for ||S||
+    alpha=10 # for ||S||
     lamda=10 # for ||W||
-    rho=0.001 # for tr(FLsF)
+    rho=0.005 # for tr(FLsF)
     gamma=1 # for ||D||
     epsilon=1 # for SI-1
     beta=10 # for ||DA-F||
@@ -89,8 +89,8 @@ class MTNE_learnSimilarity_nocompany():
 
             A=self.edgeDict[key]
 
-            X=self.initX(A,self.theta)
-            X=X/(X.max()-X.min())
+            X=self.initX(A)
+            # X=X/(X.max()-X.min())
             X_list.append(X)
 
             X_mask=np.zeros((self.q,self.q))
@@ -180,8 +180,17 @@ class MTNE_learnSimilarity_nocompany():
                     # lambda_ff=lambda_ff-nita*np.linalg.norm(vec)
 
                     # for S
-                    ls=(S[i_big_index]-P[i_big_index])-self.epsilon*np.ones(self.q)-self.alpha*S[i_big_index]
+                    firstp=S[i_big_index]-P[i_big_index]
+                    secondp=self.epsilon*np.ones(self.q)
+                    thirdp=self.alpha*S[i_big_index]
+                    ls=firstp+secondp+thirdp
                     S[i_big_index]=S[i_big_index]-nita*ls
+                    for col in range(self.q):
+                        if S[i_big_index,col]>1: S[i_big_index,col]=1.
+                        if S[i_big_index,col]<0: S[i_big_index,col]=0.
+                    S[:,i_big_index]=S[i_big_index]
+
+                    S[i_big_index,i_big_index]=1.
 
                 Aprime=self.chechnegtive(Aprime,None,None)
 
@@ -208,6 +217,9 @@ class MTNE_learnSimilarity_nocompany():
             simMD,simML=self.getLaplacian(S)
             trval=np.trace(np.dot(np.dot(F_big.T,simML),F_big))
             gapval=np.linalg.norm(X_mask_big*(S-X_big))
+
+            print 'trace: '+str(self.rho*trval)
+            print 's loss: '+str(self.eta*gapval)
 
             loss_t1+=self.rho*trval+self.eta*gapval
 
@@ -260,8 +272,9 @@ class MTNE_learnSimilarity_nocompany():
         Q=np.zeros((size,size))
         P=np.zeros((size,size))
         for i in range(size):
-            for j in range(size):
+            for j in range(i+1,size):
                 Q[i,j]=np.linalg.norm(F[i]-F[j])
+                Q[j,i]=Q[i,j]
 
         P=(2*Xmask*X_big-self.rho*Q)/(2*Xmask+ np.full((size,size), self.alpha))
         return P
@@ -274,9 +287,16 @@ class MTNE_learnSimilarity_nocompany():
             globalLen=globalLen+shape_i
         return matrixList
 
-    def initX(self,Ajen,alpha):
+    def initX(self,Ajen):
+        length=Ajen.shape[0]
         secondOrder=np.dot(Ajen,Ajen)
-        return Ajen+alpha*secondOrder
+        thirdOrder=np.dot(Ajen,secondOrder)
+        total=Ajen+(1.0/length)*secondOrder+(1.0/(length*length))*thirdOrder
+        sim_first=cosine_similarity(Ajen)
+        sim_second=cosine_similarity(secondOrder)
+        sim_third=cosine_similarity(thirdOrder)
+        simM=(sim_first+sim_second+sim_third)/3.0
+        return simM
 
     def eigenVectorAndEigenValue(self,M,k):
         val,vec=np.linalg.eig(M)
@@ -322,3 +342,14 @@ class MTNE_learnSimilarity_nocompany():
             D[i][i]=np.sum(W[:,i])
         L=D-W
         return [D,L]
+
+if __name__ == "__main__":
+
+    label='0.01'
+    edgeDict=pickle.load(open('edgeDict_'+label+'.dat', "rb"))
+    nodeIndexDict=pickle.load(open('nodeIndexDict_'+label+'.dat', "rb"))
+    mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict)
+    a_list,f_list,s=mtne.MTNE()
+    pickle.dump(a_list, open('A_list_'+label+'.dat', "wb"), True)
+    pickle.dump(f_list, open('F_list_'+label+'.dat', "wb"), True)
+    pickle.dump(s, open('S_'+label+'.dat', "wb"), True)
