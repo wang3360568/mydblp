@@ -16,8 +16,7 @@ from setupNetwork import SetupNetwork
 import math
 import collections
 import numpy as np
-from MTNE_nocompany import MTNE_nocompany
-from MTNE_learnSimilarity import MTNE_learnSimilarity_nocompany
+
 
 class InitNetworks:
 
@@ -27,7 +26,7 @@ class InitNetworks:
     gap=2
     hisGap=10
     rou=0.4
-    lowerVal=0.005 #0.005
+    lowerVal=0.01 #0.005
 
     def __init__(self,paperObjFile,authorObjFile,yearCountFile):
         self.paperObjDict=pickle.load(open(paperObjFile, "rb"))

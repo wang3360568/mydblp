@@ -2,7 +2,6 @@
 import os
 import json
 import sys
-import networkx as nx
 import matplotlib.pyplot as plt
 import util
 import re
@@ -30,15 +29,15 @@ class MTNE_learnSimilarity_nocompany():
     d=7
 
     theta=5 # paremeter for the second order
-    alpha=10 # for ||S||
+    alpha=30 # for ||S||
     lamda=10 # for ||W||
     rho=0.005 # for tr(FLsF)
-    gamma=1 # for ||D||
+    gamma=20 # for ||D||
     epsilon=1 # for SI-1
-    beta=10 # for ||DA-F||
-    eta=10 # for ||I(S-f(X))||
-    mu=1
-    theta=1
+    beta=2 # for ||DA-F||
+    eta=30 # for ||I(S-f(X))||
+    mu=2 # for ||Y-AM||
+    theta=30 # for ||M||
 
 
     lamda_pgd=100
@@ -177,7 +176,10 @@ class MTNE_learnSimilarity_nocompany():
 
                 for i in range(n):
                     # for A
-                    z=Aprime[i]-nita*(np.dot(np.dot(Aprime[i],W.T)-X[i],W)+self.mu*np.dot(np.dot(Aprime[i],M.T)-Y[i],M)+self.beta*np.dot(np.dot(Aprime[i],D)-F[i],D.T))
+                    zpart1=np.dot(np.dot(Aprime[i],W.T)-X[i],W)
+                    zpart2=self.mu*np.dot(np.dot(Aprime[i],M.T)-Y[i],M)
+                    zpart3=self.beta*np.dot(np.dot(Aprime[i],D)-F[i],D.T)
+                    z=Aprime[i]-nita*(zpart1+zpart2+zpart3)
                     update=np.maximum(np.zeros(np.shape(z)),np.abs(z)-nita*self.lamda_pgd)
                     Aprime[i]=np.sign(z)*update
 
@@ -212,13 +214,15 @@ class MTNE_learnSimilarity_nocompany():
 
                     S[i_big_index,i_big_index]=1.
 
+                print Aprime[i]
                 Aprime=self.chechnegtive(Aprime,None,None)
+                print Aprime[i]
 
                 LW=np.dot((np.dot(W,Aprime.T)-X),Aprime)+self.lamda*W
                 W=W-nita*LW
                 W=self.chechnegtive(W,None,None)
 
-                LM=np.dot((np.dot(Aprime,M.T)-Y).T,Aprime)+self.lamda*M
+                LM=self.mu*np.dot((np.dot(Aprime,M.T)-Y).T,Aprime)+self.theta*M
                 M=M-nita*LM
                 M=self.chechnegtive(M,None,None)
 
@@ -257,10 +261,15 @@ class MTNE_learnSimilarity_nocompany():
     def lossfuction(self,X,W,A,F,D,Y,M):
 
         # part1=0.5*(loss(AD,U.T,V,True)+loss(D,V.T,ND,False)+loss(A,U.T,NA,False))
-        part1=0.5*(self.loss(X,W,A.T,False)+self.mu*self.loss(Y,A,M.T,False))
+        part1_first=self.loss(X,W,A.T,False)
+        part2_second=self.mu*self.loss(Y,A,M.T,False)
+        part1=0.5*(part1_first+part2_second)
         part2=0.5*self.beta*(self.loss(F,A,D,False))
         # part2=tau*(np.linalg.norm(U)+np.linalg.norm(V)+np.linalg.norm(NA)+np.linalg.norm(ND))
-        part3=0.5*(self.lamda*np.linalg.norm(W)+self.gamma*np.linalg.norm(D)+self.theta*np.linalg.norm(M))
+        normW=self.lamda*np.linalg.norm(W)
+        normD=self.gamma*np.linalg.norm(D)
+        normM=self.theta*np.linalg.norm(M)
+        part3=0.5*(normW+normD+normM)
 
         print 'part1: '+ str(part1)
         print 'part2: '+ str(part2)
@@ -370,7 +379,7 @@ class MTNE_learnSimilarity_nocompany():
 
 if __name__ == "__main__":
 
-    label='0.005'
+    label='0.01'
     edgeDict=pickle.load(open('edgeDict_'+label+'.dat', "rb"))
     nodeIndexDict=pickle.load(open('nodeIndexDict_'+label+'.dat', "rb"))
     attributeslist=pickle.load(open('attributeslist_'+label+'.dat', "rb"))

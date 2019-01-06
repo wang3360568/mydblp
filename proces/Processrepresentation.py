@@ -2,7 +2,6 @@
 import os
 import json
 import sys
-import networkx as nx
 import matplotlib.pyplot as plt
 import util
 import re
@@ -152,14 +151,15 @@ class MyTSNE:
 
 if __name__ == "__main__":
     cluNum=16
-    clu=Clustering_new('./F_list.dat','./A_list.dat','./S.dat','./edgeDict_0.01.dat','./nodeIndexDict_0.01.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
+    label='0.01'
+    clu=Clustering_new('./F_list_new_company_'+label+'.dat','./A_list_new_company_'+label+'.dat','./S_new_company_'+label+'.dat','./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
     totalKeyList=clu.getTotalKeyList()
     clu.writeSimilarity(totalKeyList)
     a_big=clu.writeAandF(totalKeyList,clu.a_list,'a.csv')
     f_big=clu.writeAandF(totalKeyList,clu.f_list,'f.csv')
-    cluResults=clu.clustering(cluNum,a_big)
-    mt=MyTSNE(a_big,2)
+    cluResults=clu.clustering(cluNum,f_big)
+    mt=MyTSNE(f_big,2)
     a_total_new=mt.TSNETransfer()
-    mt.plot_embedding_scatter(a_total_new,totalKeyList,cluResults,cluNum,title='0.01')
+    mt.plot_embedding_scatter(a_total_new,totalKeyList,cluResults,cluNum,title=label)
 
 
