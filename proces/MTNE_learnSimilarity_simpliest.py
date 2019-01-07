@@ -34,7 +34,7 @@ class MTNE_learnSimilarity_nocompany():
     rho=0.01 # for tr(FLsF)
     gamma=20 # for ||D||
     epsilon=30 # for SI-1
-    beta=0.1 # for ||DA-F||
+    beta=10 # for ||DA-F||
     eta=100 # for ||I(S-f(X))||
     mu=2 # for ||Y-AM||
     theta=30 # for ||M||
@@ -66,30 +66,29 @@ class MTNE_learnSimilarity_nocompany():
         # dictionary
         D=np.random.rand(self.p, self.m)
 
-        lambda_ff_list=[]
 
         # Author
         Aprime_list=[]
         # weight
-        W_list=[]
+        # W_list=[]
         # dense vector
         F_list=[]
         # similarity local
         X_list=[]
-        Sim_mask_list=[]
+        # Sim_mask_list=[]
 
-        Y_list=[]
-        M_list=[]
+        # Y_list=[]
+        # M_list=[]
         
-        Sim_list=[]
+        # Sim_list=[]
 
         # all sparse embeddings across all timestamps
 
-        # F_big=np.zeros((self.q,self.k))
-        Sim_big=np.zeros((self.q,self.q))
-        Sim_mask_big=np.zeros((self.q,self.q))
+        F_big=np.zeros((self.q,self.k))
+        # Sim_big=np.zeros((self.q,self.q))
+        # Sim_mask_big=np.zeros((self.q,self.q))
         
-        S=np.random.rand(self.q,self.q)
+        # S=np.random.rand(self.q,self.q)
 
         indexDict_local2global=collections.OrderedDict()
         indexDict_global2local=dict()
@@ -105,12 +104,12 @@ class MTNE_learnSimilarity_nocompany():
             # X=X/(X.max()-X.min())
             X_list.append(X)
 
-            Sim_mask=np.zeros((self.q,self.q))
+            # Sim_mask=np.zeros((self.q,self.q))
             # number of nodes in the current time
             n=A.shape[0]
 
-            Y=MinMaxScaler().fit_transform(self.attributeslist[index])
-            Y_list.append(Y)
+            # Y=MinMaxScaler().fit_transform(self.attributeslist[index])
+            # Y_list.append(Y)
 
             Aprime=np.random.rand(n, self.p)
             Aprime_list.append(Aprime)
@@ -121,25 +120,25 @@ class MTNE_learnSimilarity_nocompany():
                 indexDict_global2local[globalIndex+i]=(key,i)
             indexDict_local2global[key]=indexDict
             
-            sim=self.initSim(X,Y)
-            Sim_list.append(sim)
+            # sim=self.initSim(X,Y)
+            # Sim_list.append(sim)
             
-            for i in range(n):
-                i_big=indexDict[i]
-                for j in range(n):
-                    j_big=indexDict[j]
-                    Sim_big[i_big,j_big]=sim[i,j]
-                    Sim_mask[i_big,j_big]=1.
-                    Sim_mask_big[i_big,j_big]=1.
-            Sim_mask_list.append(Sim_mask)
+            # for i in range(n):
+            #     i_big=indexDict[i]
+            #     for j in range(n):
+            #         j_big=indexDict[j]
+            #         Sim_big[i_big,j_big]=sim[i,j]
+            #         Sim_mask[i_big,j_big]=1.
+            #         Sim_mask_big[i_big,j_big]=1.
+            # Sim_mask_list.append(Sim_mask)
 
             globalIndex+=n
 
-            W = np.random.rand(n, self.m)
-            W_list.append(W)
+            # W = np.random.rand(n, self.m)
+            # W_list.append(W)
 
-            M = np.random.rand(self.d, self.m)
-            M_list.append(M)
+            # M = np.random.rand(self.d, self.m)
+            # M_list.append(M)
 
             F = np.random.rand(n, self.m)
             F_list.append(F)
@@ -165,33 +164,34 @@ class MTNE_learnSimilarity_nocompany():
             for key in self.edgeDict:
                 
                 X=X_list[counter]
-                W=W_list[counter]
+                # W=W_list[counter]
                 F=F_list[counter]
-                Y=Y_list[counter]
+                # Y=Y_list[counter]
                 Aprime=Aprime_list[counter]
                 indexDict=indexDict_local2global[key]
-                Sim_mask=Sim_mask_list[counter]
+                # Sim_mask=Sim_mask_list[counter]
 
-                P=self.getP(Sim_mask,F_big,Sim_big)
+                # P=self.getP(Sim_mask,F_big,Sim_big)
 
                 n=X.shape[0]
 
                 for i in range(n):
 
                     # for F
-                    lf_part1=np.dot(np.dot(F[i],W.T)-X[i],W)
-                    lf_part2=self.mu*np.dot(np.dot(F[i],M.T)-Y[i],M)
+                    lf_part1=np.dot(np.dot(F[i],F.T)-X[i],F)
+                    # lf_part2=self.mu*np.dot(np.dot(F[i],M.T)-Y[i],M)
                     lf_part3=self.beta*(F[i]-np.dot(Aprime[i],D))
-                    lf_part4=np.zeros(self.m)
+                    # lf_part4=np.zeros(self.m)
                     i_big_index=indexDict[i]
-                    for j in range(self.q):
-                        lf_part4+=self.rho*(F[i]-F_big[j])*S[i_big_index,j]
+                    # for j in range(self.q):
+                    #     lf_part4+=self.rho*(F[i]-F_big[j])*S[i_big_index,j]
                     
                     val1=np.dot(F[i],F_big.T)
                     val2=val1-np.ones(self.q)
                     val3=np.dot(val2,F_big)
-                    lf_part5=self.zeta*val3
-                    F[i]=F[i]-nita*(lf_part1+lf_part2+lf_part3+lf_part4+lf_part5)
+                    # lf_part5=self.zeta*val3
+                    lf_part6=self.lamda*F[i]
+                    F[i]=F[i]-nita*(lf_part1+lf_part3+lf_part6)
                     F_big[i_big_index]=F[i]
 
                     # for A
@@ -204,26 +204,26 @@ class MTNE_learnSimilarity_nocompany():
                     # lambda_ff=lambda_ff-nita*np.linalg.norm(vec)
 
                     # for S
-                    firstp=S[i_big_index]-P[i_big_index]
-                    secondp=self.epsilon*np.ones(self.q)
-                    thirdp=self.alpha*S[i_big_index]
-                    ls=firstp+secondp+thirdp
-                    S[i_big_index]=S[i_big_index]-nita*ls
-                    for col in range(self.q):
-                        if S[i_big_index,col]>1: S[i_big_index,col]=1.
-                        if S[i_big_index,col]<0: S[i_big_index,col]=0.
-                    S[:,i_big_index]=S[i_big_index]
+                    # firstp=S[i_big_index]-P[i_big_index]
+                    # secondp=self.epsilon*np.ones(self.q)
+                    # thirdp=self.alpha*S[i_big_index]
+                    # ls=firstp+secondp+thirdp
+                    # S[i_big_index]=S[i_big_index]-nita*ls
+                    # for col in range(self.q):
+                    #     if S[i_big_index,col]>1: S[i_big_index,col]=1.
+                    #     if S[i_big_index,col]<0: S[i_big_index,col]=0.
+                    # S[:,i_big_index]=S[i_big_index]
 
-                    S[i_big_index,i_big_index]=1.
+                    # S[i_big_index,i_big_index]=1.
 
-                # F=self.chechnegtive(F,None,None)
+                F=self.chechnegtive(F,None,None)
 
-                LW=np.dot((np.dot(F,W.T)-X),F)+self.lamda*W
-                W=W-nita*LW
-                # W=self.chechnegtive(W,None,None)
+                # LW=np.dot((np.dot(F,W.T)-X),F)+self.lamda*W
+                # W=W-nita*LW
+                # # W=self.chechnegtive(W,None,None)
 
-                LM=self.mu*np.dot((np.dot(F,M.T)-Y).T,F)+self.theta*M
-                M=M-nita*LM
+                # LM=self.mu*np.dot((np.dot(F,M.T)-Y).T,F)+self.theta*M
+                # M=M-nita*LM
                 # M=self.chechnegtive(M,None,None)
 
                 p1=np.dot(Aprime,D)-F
@@ -231,44 +231,45 @@ class MTNE_learnSimilarity_nocompany():
                 LD=p2+self.gamma*D
                 D=D-nita*LD
 
-                W_list[counter]=W
-                M_list[counter]=M
+                # W_list[counter]=W
+                # M_list[counter]=M
                 F_list[counter]=F
                 Aprime_list[counter]=Aprime
 
-                loss_t1_part=self.lossfuction(X,W,Aprime,F,D,Y,M)
+                loss_t1_part=self.lossfuction(X,Aprime,F,D)
                 loss_t1+=loss_t1_part
                 counter+=1
             
             
             # loss_last=self.laplacianLoss(simM,F)
-            simMD,simML=self.getLaplacian(S)
-            trval=np.trace(np.dot(np.dot(F_big.T,simML),F_big))
-            gapval=np.linalg.norm(Sim_mask_big*(S-Sim_big))
+            # simMD,simML=self.getLaplacian(S)
+            # trval=np.trace(np.dot(np.dot(F_big.T,simML),F_big))
+            # gapval=np.linalg.norm(Sim_mask_big*(S-Sim_big))
 
-            print 'trace: '+str(self.rho*trval)
-            print 's loss: '+str(self.eta*gapval)
+            # print 'trace: '+str(self.rho*trval)
+            # print 's loss: '+str(self.eta*gapval)
 
-            loss_t1+=self.rho*trval+self.eta*gapval
+            # loss_t1+=self.rho*trval+self.eta*gapval
 
             if loss_t<loss_t1 and loss_t!=0:
                 break
         # print loss_t
             print loss_t1
-        return [Aprime_list,F_list,S]
+        return [Aprime_list,F_list]
 
-    def lossfuction(self,X,W,A,F,D,Y,M):
+    def lossfuction(self,X,A,F,D):
 
         # part1=0.5*(loss(AD,U.T,V,True)+loss(D,V.T,ND,False)+loss(A,U.T,NA,False))
-        part1_first=self.loss(X,F,W.T,False)
-        part2_second=self.mu*self.loss(Y,F,M.T,False)
-        part1=0.5*(part1_first+part2_second)
+        part1_first=self.loss(X,F,F.T,False)
+        # part2_second=self.mu*self.loss(Y,F,M.T,False)
+        part1=0.5*(part1_first)
         part2=0.5*self.beta*(self.loss(F,A,D,False))
         # part2=tau*(np.linalg.norm(U)+np.linalg.norm(V)+np.linalg.norm(NA)+np.linalg.norm(ND))
-        normW=self.lamda*np.linalg.norm(W)
+        # normW=self.lamda*np.linalg.norm(W)
+        # normF=self.lamda*np.linalg.norm(F)
         normD=self.gamma*np.linalg.norm(D)
-        normM=self.theta*np.linalg.norm(M)
-        part3=0.5*(normW+normD+normM)
+        # normM=self.theta*np.linalg.norm(M)
+        part3=0.5*(normD)
 
         print 'part1: '+ str(part1)
         print 'part2: '+ str(part2)
@@ -387,7 +388,7 @@ if __name__ == "__main__":
     nodeIndexDict=pickle.load(open('nodeIndexDict_'+label+'.dat', "rb"))
     attributeslist=pickle.load(open('attributeslist_'+label+'.dat', "rb"))
     mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict,attributeslist)
-    a_list,f_list,s=mtne.MTNE()
-    pickle.dump(a_list, open('A_list_new_company_'+label+'.dat', "wb"), True)
-    pickle.dump(f_list, open('F_list_new_company_'+label+'.dat', "wb"), True)
-    pickle.dump(s, open('S_new_company_'+label+'.dat', "wb"), True)
+    a_list,f_list=mtne.MTNE()
+    pickle.dump(a_list, open('A_list_simpliest_'+label+'.dat', "wb"), True)
+    pickle.dump(f_list, open('F_list_simpliest_'+label+'.dat', "wb"), True)
+    # pickle.dump(s, open('S_new_compa_'+label+'.dat', "wb"), True)
