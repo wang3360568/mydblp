@@ -46,3 +46,11 @@ F_list_simpliest_0.01.dat
 S_new_company_0.005.dat
 plot_embedding_scatter_0.005.png
 simularity.csv
+.vscode/settings.json
+s.csv
+A_list_company_0.005.dat
+A_list_withSim_0.005.dat
+F_list_company_0.005.dat
+F_list_withSim_0.005.dat
+S_company_0.005.dat
+d.csv

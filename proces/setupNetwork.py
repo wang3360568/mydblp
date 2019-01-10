@@ -37,6 +37,7 @@ class SetupNetwork:
         edgeIndexDict_new=collections.OrderedDict()
         
         for key in self.nodeIndexDict:
+
             myGraph = snap.TNEANet.New()
             keyList=self.nodeIndexDict[key]
 
@@ -52,6 +53,7 @@ class SetupNetwork:
             # B=np.dot(A,np.dot(A,A))
             # B_sim=cosine_similarity(A)
             C=A
+            outputList=[]
             for i in range(length):
                 for j in range(i+1,length):
                     if C[i,j]>0:
@@ -59,6 +61,9 @@ class SetupNetwork:
                         myGraph.AddFltAttrDatE(eid, A[i,j], 'weigth')
                         eid=myGraph.AddEdge(j, i)
                         myGraph.AddFltAttrDatE(eid, A[j,i], 'weigth')
+                        outputList.append([keyList[i],keyList[j], A[i,j]])
+
+            util.write_csv_inlist(str(key)+'.csv',outputList)
 
             print str(key)+'-original: '+str(myGraph.GetEdges())+' '+str(myGraph.GetNodes())
             MxWcc = snap.GetMxWcc(myGraph)

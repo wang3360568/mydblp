@@ -152,7 +152,7 @@ class MyTSNE:
 if __name__ == "__main__":
     cluNum=16
     label='0.005'
-    clu=Clustering_new('./F_list_simpliest_'+label+'.dat','./A_list_simpliest_'+label+'.dat','./S_new_company_'+label+'.dat','./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
+    clu=Clustering_new('./F_list_withSim_'+label+'.dat','./A_list_withSim_'+label+'.dat','./S_company_'+label+'.dat','./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
     totalKeyList=clu.getTotalKeyList()
     # clu.writeSimilarity(totalKeyList)
     a_big=clu.writeAandF(totalKeyList,clu.a_list,'a.csv')
