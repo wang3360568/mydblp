@@ -27,7 +27,7 @@ class InitNetworks:
     gap=2
     hisGap=10
     rou=0.4
-    lowerVal=0.005 #0.005
+    lowerVal=0.001 #0.005
 
     def __init__(self,paperObjFile,authorObjFile,yearCountFile):
         self.paperObjDict=pickle.load(open(paperObjFile, "rb"))
@@ -131,13 +131,13 @@ if __name__ == "__main__":
     edgeDict_new,nodeIndexDict_new=sN.buildNetwork()
     attributeslist=sN.getNodeAttributes()
 
-    refex=ReadRefex('E:\\data\\dblp\\mydata\\refexfeatures_0.001\\',2005,2013,nodeIndexDict_new)
-    refexFeature=refex.readfile()
+    # refex=ReadRefex('E:\\data\\dblp\\mydata\\refexfeatures_'+str(lowerVal)+'\\',2005,2013,nodeIndexDict_new)
+    # refexFeature=refex.readfile()
 
     pickle.dump(edgeDict_new, open('edgeDict_'+str(init.lowerVal)+'.dat', "wb"), True)
     pickle.dump(nodeIndexDict_new, open('nodeIndexDict_'+str(init.lowerVal)+'.dat', "wb"), True)
     pickle.dump(attributeslist, open('attributeslist_'+str(init.lowerVal)+'.dat', "wb"), True)
-    pickle.dump(refexFeature, open('refexFeature_'+str(init.lowerVal)+'.dat', "wb"), True)
+    # pickle.dump(refexFeature, open('refexFeature_'+str(init.lowerVal)+'.dat', "wb"), True)
 
     # for i in range(1999,2016):
     #     author_nodes=init.selectAuthors_forARange(i)

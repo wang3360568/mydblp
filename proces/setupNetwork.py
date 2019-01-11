@@ -69,6 +69,11 @@ class SetupNetwork:
             MxWcc = snap.GetMxWcc(myGraph)
             print str(key)+'-mxWcc: '+str(MxWcc.GetEdges())+' '+str(MxWcc.GetNodes())
 
+            labels = snap.TIntStrH()
+            for NI in MxWcc.Nodes():
+                labels[NI.GetId()] = str(NI.GetId())
+            snap.DrawGViz(MxWcc, snap.gvlSfdp, './graph/'+str(key)+".gif", " ", labels)
+            
             keyList_new=[]
             
             for node in MxWcc.Nodes():
