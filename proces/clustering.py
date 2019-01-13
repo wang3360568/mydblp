@@ -17,8 +17,10 @@ from myclass.myobj import Paper,Person,Author
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import spectral_clustering,KMeans
+from networkTool import NetworkTool
 
-class MTNE_learnSimilarity_nocompany():
+class Clustering():
     # number of embedding dimensions
     m=32
     # number of sparse embedding dimensions
@@ -47,17 +49,19 @@ class MTNE_learnSimilarity_nocompany():
     t = 100000000.
 
 
-    def __init__(self,edgeDict,nodeIndexDict,attributeslist,refexFeature,isBinary=True):
+    def __init__(self,edgeDict,nodeIndexDict,attributeslist,refexFeature,authorObjDict,isBinary=True):
         if isBinary:
             self.edgeDict=edgeDict
             self.nodeIndexDict=nodeIndexDict
             self.attributeslist=attributeslist
             self.refexFeature=refexFeature
+            self.authorObjDict=authorObjDict
         else:
             self.edgeDict=pickle.load(open(edgeDict, "rb"))
             self.nodeIndexDict=pickle.load(open(nodeIndexDict, "rb"))
             self.attributeslist=pickle.load(open(attributeslist, "rb"))
             self.refexFeature=pickle.load(open(refexFeature, "rb"))
+            self.authorObjDict=pickle.load(open(authorObjDict, "rb"))
 
         # total number of nodes of all timestamps
         self.q=0
@@ -65,68 +69,65 @@ class MTNE_learnSimilarity_nocompany():
             self.q+=len(nodeIndexDict[key])
 
 
-    def Clustering_preGraph(self):
+    def clustering_preGraph(self):
 
-        # Author
-        Aprime_list=[]
-
-        F_list=[]
-        # similarity local
-        X_list=[]
-        # refex features
-        Y_list=[]
-
-        F_big=np.zeros((self.q,self.k))
-
-        R_big=np.zeros((self.q,self.re))
-
-        indexDict_local2global=collections.OrderedDict()
-        indexDict_global2local=dict()
-        globalIndex=0
-        index=0
 
         for key in self.edgeDict:
+            clusterNum=8
 
             A=self.edgeDict[key]
+            nt=NetworkTool()
+            nt.initNetwork(A,nodeIndexDict[key])
+            # X=self.initX(A)
+            # labels = spectral_clustering(A, n_clusters=clusterNum, eigen_solver='arpack')
+            # counter=self.counter(labels,clusterNum)
 
-            X=self.initX(A)
-            # X=X/(X.max()-X.min())
-            
+            Y=self.refexFeature[key]
+            pca = PCA(n_components=50, svd_solver='full')
+            Y_50=pca.fit_transform(Y)
+            S=cosine_similarity(Y_50)
+            S=(S+1.0)/2.0
+            labels = spectral_clustering( S, n_clusters=clusterNum, eigen_solver='arpack')
+            counter=self.counter(labels,clusterNum)
 
-            n=A.shape[0]
-
-            Y_list.append(self.refexFeature[key])
-
-            Aprime=np.random.rand(n, self.p)
-            # Aprime = np.zeros((n, self.p))
-            Aprime_list.append(Aprime)
-
-            indexDict=dict()
-            for i in range(n):
-                indexDict[i]=globalIndex+i
-                indexDict_global2local[globalIndex+i]=(key,i)
-            indexDict_local2global[key]=indexDict
-
-            F = np.random.rand(n, self.m)
-            # F = np.zeros((n, self.m))
-            F_list.append(F)
-
-            globalIndex+=n
-            index+=1
-        
-        F_big=self.concatenateMatrixInList(F_list,self.m,0)
-
-        R_big=self.concatenateMatrixInList(Y_list,self.re,0)
-        R_big=MinMaxScaler().fit_transform(R_big)
-        pca = PCA(n_components='mle', svd_solver='full')
-        R_new=pca.fit_transform(R_big)  
-        S=cosine_similarity(R_new)
-        S=(S+1)/2
-        np.savetxt('s.csv', S, delimiter=',')   
-        simMD,simML=self.getLaplacian(S)
+            self.draw(nodeIndexDict[key],nt,labels,str(key)+'_spectral_'+str(clusterNum)+'.png')
+            self.output(nodeIndexDict[key],labels,str(key)+'_spectral')
 
 
-        return [Aprime_list,F_list]
+            kmeans = KMeans(n_clusters=clusterNum, random_state=0).fit(Y_50)
+            labels_km=kmeans.labels_.tolist()
+            counter=self.counter(labels_km,clusterNum)
+
+            self.draw(nodeIndexDict[key],nt,labels_km,str(key)+'_kmean_'+str(clusterNum)+'.png')
+            self.output(nodeIndexDict[key],labels_km,str(key)+'_kmean')
+
+
+    def output(self,keyList,labels,name):
+        outputList=[]
+        length=len(keyList)
+        for i in range(length):
+            clu=labels[i]
+            theKey=keyList[i]
+            outputList.append([theKey,self.authorObjDict[theKey].name,clu])
+
+        util.write_csv_inlist('./authorCluster_'+name+'.csv',outputList)
+    
+    def draw(self,nodeIndex,nt,labels,name):
+        labelDict=dict()
+        for i in range(len(nodeIndex)):
+            labelDict[nodeIndex[i]]=labels[i]
+        nt.drawGraph(labelDict,nt.myGraph,name)
+
+
+    def counter(self,labels,clusterNum):
+        counterlist=[]
+        for i in range(clusterNum):
+            counterlist.append(0)
+
+        for val in labels:
+            counterlist[val]+=1
+
+        return counterlist
 
 
     def concatenateMatrixInList(self,matrixList,dim,axis):
@@ -191,7 +192,7 @@ if __name__ == "__main__":
     nodeIndexDict=pickle.load(open('nodeIndexDict_'+label+'.dat', "rb"))
     attributeslist=pickle.load(open('attributeslist_'+label+'.dat', "rb"))
     refexFeature=pickle.load(open('refexFeature_'+label+'.dat', "rb"))
-    mtne=MTNE_learnSimilarity_nocompany(edgeDict,nodeIndexDict,attributeslist,refexFeature)
-    a_list,f_list=mtne.MTNE()
-    pickle.dump(a_list, open('A_list_withSim_'+label+'.dat', "wb"), True)
-    pickle.dump(f_list, open('F_list_withSim_'+label+'.dat', "wb"), True)
+    authorDict_obj=pickle.load(open('./proces/authorDict_obj.dat', "rb"))
+
+    clu=Clustering(edgeDict,nodeIndexDict,attributeslist,refexFeature,authorDict_obj)
+    clu.clustering_preGraph()

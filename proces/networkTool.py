@@ -18,18 +18,24 @@ import collections
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity,euclidean_distances
 
-class SetupNetwork:
-    def __init__(self,Ajen,keyList):
+class NetworkTool:
+
+    def initNetwork(self,Ajen,keyList):
 
         self.Ajen=Ajen
         self.keyList=keyList
         self.myGraph = snap.TNEANet.New()
+        self.nid2id=dict()
+        self.id2nid=dict()
 
         length=len(keyList)
         for i in range(length):
             theKey=keyList[i]
             nid=self.myGraph.AddNode(i)
             self.myGraph.AddStrAttrDatN(nid, theKey, 'key')
+            self.nid2id[nid]=theKey
+            self.id2nid[theKey]=nid
+
 
         self.outputList=[]
         for i in range(length):
@@ -37,8 +43,8 @@ class SetupNetwork:
                 if Ajen[i,j]>0:
                     eid=self.myGraph.AddEdge(i, j)
                     self.myGraph.AddFltAttrDatE(eid, Ajen[i,j], 'weigth')
-                    eid=self.myGraph.AddEdge(j, i)
-                    self.myGraph.AddFltAttrDatE(eid, Ajen[j,i], 'weigth')
+                    # eid=self.myGraph.AddEdge(j, i)
+                    # self.myGraph.AddFltAttrDatE(eid, Ajen[j,i], 'weigth')
                     self.outputList.append([keyList[i],keyList[j], Ajen[i,j]])
 
         print '-original: '+str(self.myGraph.GetEdges())+' '+str(self.myGraph.GetNodes())
@@ -53,7 +59,8 @@ class SetupNetwork:
 
         labels = snap.TIntStrH()
         for NI in theGraph.Nodes():
-            labels[NI.GetId()] = labelDict[NI.GetId()]
+            thekey=self.nid2id[NI.GetId()]
+            labels[NI.GetId()] = str(labelDict[thekey])
         snap.DrawGViz(theGraph, snap.gvlSfdp, graphName, " ", labels)
             
     def fromGraphtoList(self,theGraph):
