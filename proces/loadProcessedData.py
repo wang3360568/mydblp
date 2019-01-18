@@ -12,7 +12,7 @@ import HTMLParser
 import dblp
 import cPickle as pickle
 import collections
-sys.path.append('..')
+sys.path.append('.')
 from myclass.myobj import Paper,Person,Author
 
 import pymysql.cursors
@@ -33,13 +33,11 @@ class ParseOriginalData:
         self.paper_confDict=self.readPaper_conf(paper_conffile)
         self.paper_authorDict=self.readPaper_author(paper_authorfile)
         self.paper_yearDict=util.read_csv_withdict(paper_yearfile,0,1)
-        self.focused_confDict=self.readDBISDict(focused_conffile)
+        self.focused_confDict,self.focused_confDict_area=self.readDBISDict(focused_conffile)
 
         self.paperDict_filtered=dict()
         self.paperDict_obj=dict()
         self.authorDict_obj=dict()
-
-
 
     def run(self,isWrite):
         self.prepocess()
@@ -49,11 +47,8 @@ class ParseOriginalData:
 
         self.staticByyear(self.paperDict_obj,'E:\\data\\dblp\\mydata\\yearCount.dat')
         if isWrite:
-            
-
             pickle.dump(self.paperDict_obj, open('paperDict_obj.dat', "wb"), True)
             pickle.dump(self.authorDict_obj, open('authorDict_obj.dat', "wb"), True)
-
         print 'done!'
         
     # To filter these same paper
@@ -73,12 +68,14 @@ class ParseOriginalData:
 
     def readDBISDict(self,file):
         DBIS_cleaned=dict()
+        areaDict=dict()
         with open(file) as f:
             reader = csv.reader(f)
             for row in reader:
                 venue_id=row[2]
                 DBIS_cleaned[venue_id]=row[3]
-        return DBIS_cleaned
+                areaDict[venue_id]=row[4]
+        return DBIS_cleaned,areaDict
 
 
     def readConf_raw(self, file,ishasv=True):
@@ -124,8 +121,7 @@ class ParseOriginalData:
                         paper_authorDict[paperKey]=authorlist
                 else:
                     paper_authorDict[paperKey]=[authorKey]
-        # for key in paper_authorDict:
-        #     print paper_authorDict[key]
+
         return paper_authorDict
 
     def readPaper_raw(self, file):
@@ -161,7 +157,8 @@ class ParseOriginalData:
                 title=self.paperDict_raw[paperKey],
                 venue=self.paper_confDict[paperKey],
                 year=int(self.paper_yearDict[paperKey]),
-                authors=self.paper_authorDict[paperKey]
+                authors=self.paper_authorDict[paperKey],
+                area=self.focused_confDict_area[self.paper_confDict[paperKey]]
                 )
 
     def countAuthors(self):
@@ -196,6 +193,7 @@ class ParseOriginalData:
         for key in self.authorDict_obj:
             author=self.authorDict_obj[key]
             author.update_byyear(self.startYear,self.endYear,self.paperDict_obj)
+            author.countArea(self.startYear,self.endYear,self.paperDict_obj)
 
     def staticByyear(self,inputDict,outputfile):
         yearCount=collections.OrderedDict()
@@ -213,9 +211,9 @@ class ParseOriginalData:
 
 
 if __name__ == "__main__":
-    pod=ParseOriginalData('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_author.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_author.txt','E:\\data\\dblp\\mydata\\paperwithyear_dbis.csv','E:\\data\\dblp\\mydata\\DBIStoCleaned_20.csv')
+    pod=ParseOriginalData('C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\id_author.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_conf.txt','C:\\Users\\wangzhaoyuan\\Desktop\\net_aminer\\net_aminer\\paper_author.txt','E:\\data\\dblp\\mydata\\paperwithyear_dbis.csv','E:\\data\\dblp\\mydata\\DBIStoCleaned_20_area.csv')
     # pod.staticByyear()
-    pod.run(False)
+    pod.run(True)
     # inputDict=dict()
     # with open('havelist.csv') as f:
     #     reader = csv.reader(f)

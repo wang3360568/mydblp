@@ -150,12 +150,12 @@ class MyTSNE:
         plt.savefig('plot_embedding_scatter_'+title+'.png',dpi=300)
 
 if __name__ == "__main__":
-    cluNum=16
+    cluNum=12
     label='0.005'
-    clu=Clustering_new('./F_list_withSim_'+label+'.dat','./A_list_withSim_'+label+'.dat','./S_company_'+label+'.dat','./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
+    clu=Clustering_new('./P_list_sharedSpace_withLap_withNei_'+label+'.dat','./A_list_withSim_'+label+'.dat','./S_company_'+label+'.dat','./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./proces/paperDict_obj.dat','./proces/authorDict_obj.dat')
     totalKeyList=clu.getTotalKeyList()
     # clu.writeSimilarity(totalKeyList)
-    a_big=clu.writeAandF(totalKeyList,clu.a_list,'a.csv')
+    # a_big=clu.writeAandF(totalKeyList,clu.a_list,'a.csv')
     f_big=clu.writeAandF(totalKeyList,clu.f_list,'f.csv')
     cluResults=clu.clustering(cluNum,f_big)
     mt=MyTSNE(f_big,2)

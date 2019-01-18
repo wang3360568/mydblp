@@ -105,7 +105,7 @@ class ReadRefex():
 if __name__ == "__main__":
     lowerVal=0.001
     nodeIndexDict=pickle.load(open('nodeIndexDict_'+str(lowerVal)+'.dat', "rb"))
-    refex=ReadRefex('F:\\data\\dblp\\refexfeatures_'+str(lowerVal)+'\\',2005,2013,nodeIndexDict)
+    refex=ReadRefex('E:\\data\\dblp\\mydata\\refexfeatures_'+str(lowerVal)+'\\',2005,2013,nodeIndexDict)
     refexFeature=refex.readfile()
     pickle.dump(refexFeature, open('refexFeature_'+str(lowerVal)+'.dat', "wb"), True)
     # for fea in featureSet:

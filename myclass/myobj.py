@@ -11,6 +11,7 @@ class Person:
         self.name=name
         self.papers=dict()
         self.yearDict=collections.OrderedDict()
+        self.areaDict=collections.OrderedDict()
     def update_paper(self,paper_id,rank):
         self.papers[paper_id]=rank
     
@@ -22,6 +23,20 @@ class Person:
                 self.yearDict[startYear].append(key)
             else:
                 self.yearDict[paperDict[key].year].append(key)
+
+    def countArea(self,startYear,endYear,paperDict):
+        for i in range(startYear,endYear):
+            self.areaDict[i]={'DM':0,'IR':0,'ML':0,'DB':0}
+        for key in self.papers:
+            if paperDict[key].year>endYear: continue
+            theArea=paperDict[key].area
+            theYear=paperDict[key].year
+            if theYear<=startYear:
+                for i in range(startYear,endYear):
+                    self.areaDict[i][theArea]=self.areaDict[i][theArea]+1
+            else:
+                for i in range(theYear,endYear):
+                    self.areaDict[i][theArea]=self.areaDict[i][theArea]+1
 
 class Person_node:
     def __init__(self,authorId,learningYear):
@@ -49,7 +64,7 @@ class Author:
         self.paperid=int(paperid)
 
 class Paper:
-    def __init__(self, id, title, venue, year,authors=None, abstract=None):
+    def __init__(self, id, title, venue, year,area,authors=None, abstract=None):
 
         try:
             self.id = id
@@ -64,6 +79,7 @@ class Paper:
             self.author_ids = {}
             self.referring_ids = []
             self.referred_ids = []
+            self.area=area
         except:
             print 'error'
             print id

@@ -54,6 +54,8 @@ class SetupNetwork:
             # B_sim=cosine_similarity(A)
             C=A
             outputList=[]
+            outputList_line=[]
+            outputList_dw=[]
             for i in range(length):
                 for j in range(i+1,length):
                     if C[i,j]>0:
@@ -62,8 +64,14 @@ class SetupNetwork:
                         eid=myGraph.AddEdge(j, i)
                         myGraph.AddFltAttrDatE(eid, A[j,i], 'weigth')
                         outputList.append([keyList[i],keyList[j], A[i,j]])
+                        outputList_line.append([keyList[j],keyList[i], A[j,i]])
+                        outputList_line.append([keyList[i],keyList[j], A[i,j]])
+                        outputList_dw.append([keyList[i],keyList[j]])
+                        outputList_dw.append([keyList[j],keyList[i]])
 
             util.write_csv_inlist(str(key)+'.csv',outputList)
+            util.write_csv_inlist(str(key)+'_line.txt',outputList_line)
+            util.write_csv_inlist(str(key)+'_dw.txt',outputList_dw)
 
             print str(key)+'-original: '+str(myGraph.GetEdges())+' '+str(myGraph.GetNodes())
             MxWcc = snap.GetMxWcc(myGraph)
