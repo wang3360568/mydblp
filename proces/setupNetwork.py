@@ -105,6 +105,7 @@ class SetupNetwork:
 
     def getNodeAttributes(self):
         attributeslist=[]
+        outputList=[]
 
         for UGraph in self.graphList:
             
@@ -161,16 +162,19 @@ class SetupNetwork:
 
             atrriMarix=np.array(attriList)
             attributeslist.append(atrriMarix)
+            outputList.append(attriList)
             # convert to undirected graph
             # GOut = snap.ConvertGraph(snap.PUNGraph, UGraph)
 
             # for NI in UGraph.Nodes():
             #     DegCentr = snap.GetDegreeCentr(UGraph, NI.GetId())
             #     print "node: %d centrality: %f" % (NI.GetId(), DegCentr)
+            util.write_csv_inlist('attributeslist.csv',outputList)
         return attributeslist
 
 if __name__ == "__main__":
-    sN=SetupNetwork('./edgeDict_0.005.dat','./nodeIndexDict_0.005.dat','./proces/paperDict_obj.dat',isBin=False)
+    label='0.001'
+    sN=SetupNetwork('./edgeDict_'+label+'.dat','./nodeIndexDict_'+label+'.dat','./paperDict_obj.dat',isBin=False)
     sN.buildNetwork()
     attributeslist=sN.getNodeAttributes()
     print 'done'

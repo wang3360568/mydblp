@@ -28,7 +28,7 @@ class MTNE_learnSimilarity_nocompany():
 
     d=7
 
-    r=226
+    r=199
 
     lamda=0.02 # for ||WW-I||
     rho=0.03 # for||WY-MP||
@@ -267,7 +267,7 @@ class MTNE_learnSimilarity_nocompany():
 
 if __name__ == "__main__":
 
-    label='0.005'
+    label='0.001'
     edgeDict=pickle.load(open('edgeDict_'+label+'.dat', "rb"))
     nodeIndexDict=pickle.load(open('nodeIndexDict_'+label+'.dat', "rb"))
     attributeslist=pickle.load(open('attributeslist_'+label+'.dat', "rb"))
